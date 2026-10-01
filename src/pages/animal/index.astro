@@ -5,63 +5,78 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <Layout title="動物詳情｜動物認領養查詢" base={base}>
-    <div id="app">載入中…</div>
-    <script type="module">
-      const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
-      const id = new URLSearchParams(location.search).get('id');
-      const app = document.getElementById('app');
-      if (!id) { app.textContent = '缺少 id'; throw new Error('no id'); }
+  <div id="app">
+    <div class="card" style="padding: 2rem; text-align: center; color: #6b7280;">載入中…</div>
+  </div>
 
-      function fnv1a(str) {
-        let h = 0x811c9dc5;
-        for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
-        return h >>> 0;
-      }
-      const favs = () => { try { return JSON.parse(localStorage.getItem('fav-animals') || '[]'); } catch { return []; } };
-      const isFav = (n) => favs().includes(Number(n));
+  <script type="module">
+    const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
+    const id = new URLSearchParams(location.search).get('id');
+    const app = document.getElementById('app');
+    if (!id) { app.textContent = '缺少 id'; throw new Error('no id'); }
 
-      const shard = fnv1a(String(id)) % 128;
-      const r = await (await fetch(`${base}/data/animal/${shard}.json`)).json();
-      const a = r.find((x) => String(x.animalId) === String(id));
-      if (!a) { app.textContent = '找不到這隻動物（可能已被認養下架）'; throw new Error('not found'); }
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
 
-      const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.shelterAddress || a.shelterName)}`;
-      const fav = isFav(a.animalId);
-      app.innerHTML = `
-        <div class="card">
-          <img class="photo" src="${a.albumFile}" onerror="this.style.display='none'" />
-          <h1>${a.kind} · ${a.variety || '品種未知'} · ${a.colour}</h1>
-          <div><span class="tag">${a.sexDisplay}</span><span class="tag">${a.bodytypeDisplay}</span><span class="tag">${a.ageDisplay}</span><span class="tag">${a.sterilizationDisplay}</span></div>
-          <p>收容編號 ${a.subId} ｜ 開放 ${a.longTermOpen ? '長期開放' : a.openDate + '～' + a.closedDate} ｜ 更新 ${a.update}</p>
-          <p>尋獲地：${a.foundPlace || '未知'}｜備註：${a.remark || '無'}</p>
-          <button id="fav">${fav ? '★ 已收藏' : '☆ 收藏'}</button>
-          <button class="ghost" id="share">複製分享網址</button>
+    function fnv1a(str) {
+      let h = 0x811c9dc5;
+      for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+      return h >>> 0;
+    }
+
+    const shard = fnv1a(String(id)) % 128;
+    const r = await (await fetch(`${base}/data/animal/${shard}.json`)).json();
+    const a = r.find((x) => String(x.animalId) === String(id));
+    if (!a) { app.textContent = '找不到這隻動物（可能已被認養下架）'; throw new Error('not found'); }
+
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.shelterAddress || a.shelterName)}`;
+    app.innerHTML = `
+      <div class="card" style="display: flex; flex-direction: column; gap: 0.8rem;">
+        ${a.albumFile ? `<img src="${esc(a.albumFile)}" onerror="this.style.display='none'" style="width: 100%; max-height: 420px; object-fit: cover; border-radius: 8px; background: var(--primary-light);" />` : ''}
+        <div>
+          <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.25rem;">
+            <span class="badge" style="background:#f3f4f6; color:#374151;">${esc(a.kind || '')}</span>
+            <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(a.sexDisplay || '')}</span>
+            <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(a.bodytypeDisplay || '')}</span>
+            <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(a.ageDisplay || '')}</span>
+            <span style="font-size:0.8rem; color:#6b7280;">${esc(a.subId || '')}</span>
+          </div>
+          <h1 style="font-size:1.4rem; color:#111827;">${esc(a.variety || '品種未知')} · ${esc(a.colour || '')}</h1>
         </div>
-        <div class="card">
-          <h2>收容所</h2>
-          <p>${a.shelterName}${a.county ? ' · ' + a.county : ''}</p>
-          <p>${a.shelterAddress} ｜ ${a.shelterTel}</p>
-          <p>${a.shelterOpenTime || ''}</p>
-          <p><a href="${mapUrl}" target="_blank" rel="noopener">地圖外連 →</a>
-          ${a.shelterId ? ` · <a href="../shelter/?id=${a.shelterId}">收容所頁 →</a>` : ''}</p>
+        <div style="font-size:0.9rem; color:#374151; display:flex; flex-wrap:wrap; gap:1rem;">
+          <span>絕育：<strong>${esc(a.sterilizationDisplay || '')}</strong></span>
+          <span>開放：<strong>${esc(a.longTermOpen ? '長期開放' : a.openDate + '～' + a.closedDate)}</strong></span>
+          <span>更新：<strong>${esc(a.update || '')}</strong></span>
         </div>
-        <div class="card"><h2>同所其他動物</h2><div id="others"></div></div>`;
-      document.getElementById('fav').onclick = (e) => {
-        const list = favs();
-        const n = Number(a.animalId);
-        const i = list.indexOf(n);
-        if (i >= 0) list.splice(i, 1); else list.push(n);
-        localStorage.setItem('fav-animals', JSON.stringify(list));
-        e.target.textContent = list.includes(n) ? '★ 已收藏' : '☆ 收藏';
-      };
-      document.getElementById('share').onclick = async () => {
-        await navigator.clipboard.writeText(location.href);
-        alert('已複製分享網址');
-      };
-      const idx = await (await fetch(`${base}/data/search-index.json`)).json();
-      const others = idx.records.filter((x) => x.shelter === a.shelterName && String(x.id) !== String(a.animalId)).slice(0, 12);
-      document.getElementById('others').innerHTML = others.length
-        ? others.map((x) => `<a href="./?id=${x.id}">${x.variety || x.kind} · ${x.sex} · ${x.subId}</a>`).join('<br/>')
-        : '無';
-    </script>
+        <div style="font-size:0.9rem; color:#374151;">
+          <p>尋獲地：${esc(a.foundPlace || '未知')}</p>
+          <p>備註：${esc(a.remark || '無')}</p>
+        </div>
+        <div>
+          <button id="share-btn" class="btn btn-secondary" style="font-size:0.85rem;">複製分享網址</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 1rem;">
+        <h2 style="font-size:1.05rem; color:#111827; margin-bottom:0.5rem;">收容所</h2>
+        <p>${esc(a.shelterName)}${a.county ? ' · ' + esc(a.county) : ''}</p>
+        <p>${esc(a.shelterAddress)} ｜ ${esc(a.shelterTel)}</p>
+        <p>${esc(a.shelterOpenTime || '')}</p>
+        <p><a href="${mapUrl}" target="_blank" rel="noopener">地圖外連 →</a>
+        ${a.shelterId ? ` · <a href="${base}/shelter/?id=${encodeURIComponent(a.shelterId)}">收容所頁 →</a>` : ''}</p>
+      </div>
+      <div class="card" style="margin-top: 1rem;">
+        <h2 style="font-size:1.05rem; color:#111827; margin-bottom:0.5rem;">同所其他動物</h2>
+        <div id="others"></div>
+      </div>`;
+    document.getElementById('share-btn').onclick = async () => {
+      await navigator.clipboard.writeText(location.href);
+      alert('已複製分享網址');
+    };
+    const idx = await (await fetch(`${base}/data/search-index.json`)).json();
+    const others = idx.records.filter((x) => x.shelter === a.shelterName && String(x.id) !== String(a.animalId)).slice(0, 12);
+    document.getElementById('others').innerHTML = others.length
+      ? others.map((x) => `<a href="${base}/animal/?id=${encodeURIComponent(x.id)}">${esc(x.variety || x.kind)} · ${esc(x.sex)} · ${esc(x.subId)}</a>`).join('<br/>')
+      : '無';
+  </script>
 </Layout>
