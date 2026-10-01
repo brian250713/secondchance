@@ -1,37 +1,10 @@
 ---
+import Layout from '../layouts/Layout.astro';
+
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<html lang="zh-TW">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>動物認領養查詢</title>
-    <style>
-      :root { --teal: #0d9488; --orange: #fb923c; --bg: #f0fdfa; }
-      body { font-family: system-ui, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; color: #134e4a; }
-      header { background: var(--teal); color: #fff; padding: 1.2rem; border-radius: 0 0 1.2rem 1.2rem; }
-      header a { color: #fff; margin-right: 1rem; }
-      main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
-      .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; background: #fff; padding: 1rem; border-radius: 1rem; margin: 1rem 0; }
-      .filters select, .filters input { padding: 0.45rem 0.6rem; border-radius: 0.7rem; border: 1px solid #99f6e4; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
-      .card { background: #fff; border-radius: 1rem; overflow: hidden; box-shadow: 0 2px 8px rgba(13,148,136,.12); }
-      .card img { width: 100%; height: 180px; object-fit: cover; background: #ccfbf1; }
-      .card .body { padding: 0.8rem; }
-      .tag { display: inline-block; background: #ccfbf1; border-radius: 999px; padding: 0.1rem 0.6rem; margin: 0.1rem; font-size: 0.85rem; }
-      .tag.hot { background: #ffedd5; }
-      .count { margin: 0.5rem 0; }
-      button.share { background: var(--orange); border: 0; color: #fff; border-radius: 0.7rem; padding: 0.45rem 0.8rem; cursor: pointer; }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>動物認領養查詢</h1>
-      <nav><a href="./">首頁</a><a href="./shelters">收容所總覽</a></nav>
-      <p>資料整理自農業部開放資料，僅供查詢參考，以主管機關公告為準。</p>
-    </header>
-    <main data-base={base}>
+<Layout title="動物認領養查詢" base={base}>
       <div class="filters" id="filters">
         <input id="q" placeholder="關鍵字：編號/品種/毛色/尋獲地" />
         <select id="f-kind"><option value="">種類</option></select>
@@ -46,7 +19,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </div>
       <div class="count" id="count"></div>
       <div class="grid" id="grid"></div>
-    </main>
     <script type="module">
       const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
       const res = await fetch(`${base}/data/search-index.json`);
@@ -136,5 +108,4 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       };
       render();
     </script>
-  </body>
-</html>
+</Layout>

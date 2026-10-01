@@ -1,0 +1,68 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  base?: string;
+}
+
+const {
+  title = '動物認領養查詢',
+  description = '整理農業部動物認領養與公立收容所開放資料的查詢站，快速找待認養動物並導流至收容所。',
+  base = '/secondchance',
+} = Astro.props;
+
+const b = (base || '/secondchance').replace(/\/+$/, '');
+---
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐶</text></svg>">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a href={`${b}/`} class="site-logo">
+          <span>🐶</span>
+          <span>動物認領養查詢</span>
+        </a>
+        <nav class="nav-links">
+          <a href={`${b}/`}>動物查詢</a>
+          <a href={`${b}/shelters`}>收容所總覽</a>
+        </nav>
+      </div>
+    </header>
+
+    <main data-base={b}>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-disclaimer">
+          <strong>免責聲明：</strong>
+          本站內容整理自政府開放資料，僅供查詢參考，不構成飼養或醫療建議，選購與飼養請諮詢獸醫師，並以主管機關公告為準。
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center;">
+          <div>
+            <p>
+              資料來源：
+              農業部「動物認領養」與「公立收容所資料」開放資料
+              （遵循<a href="https://data.gov.tw/license" target="_blank" rel="noopener noreferrer">政府資料開放授權條款</a>）
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
