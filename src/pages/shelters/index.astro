@@ -5,45 +5,71 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <Layout title="收容所總覽｜動物認領養查詢" base={base}>
-      <div class="filters">
-        <input id="q" placeholder="名稱過濾" />
-        <select id="f-county"><option value="">縣市</option></select>
-        <select id="sort"><option value="seq">排序：預設</option><option value="name">名稱</option><option value="count">在養數量</option></select>
+  <div id="search-app" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="card" style="background: linear-gradient(to bottom, #ffffff, var(--primary-light)); padding: 1.5rem;">
+      <h1 style="font-size: 1.5rem; color: var(--primary-hover); margin-bottom: 0.5rem;">收容所總覽</h1>
+      <p style="font-size: 0.9rem; color: #4b5563; margin-bottom: 1rem;">
+        依名稱過濾、縣市篩選，點進收容所查看登記資料與名下在養動物。
+      </p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;" id="overview-filters">
+        <input id="q" class="input-text" placeholder="名稱過濾" autocomplete="off" />
+        <select id="f-county" class="input-text"><option value="">全部縣市</option></select>
+        <select id="sort" class="input-text">
+          <option value="seq">排序：預設</option>
+          <option value="name">名稱</option>
+          <option value="count">在養數量</option>
+        </select>
       </div>
-      <div id="count"></div>
-      <div class="grid" id="grid"></div>
-      <p>本站內容整理自政府開放資料，僅供查詢參考，不構成飼養或醫療建議。以主管機關公告為準。</p>
-    </main>
-    <script type="module">
-      const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
-      const shelters = await (await fetch(`${base}/data/shelters.json`)).json();
-      const idx = await (await fetch(`${base}/data/search-index.json`)).json();
-      const counts = {};
-      for (const r of idx.records) counts[r.shelter] = (counts[r.shelter] || 0) + 1;
+    </div>
 
-      const $ = (id) => document.getElementById(id);
-      const fill = [...new Set(shelters.map(s => s.CityName))].sort();
-      for (const c of fill) { const o = document.createElement('option'); o.value = c; o.textContent = c; $('f-county').appendChild(o); }
+    <div style="font-size: 0.9rem; color: #4b5563;" id="count"></div>
+    <div id="grid" style="display: flex; flex-direction: column; gap: 0.85rem;"></div>
+  </div>
 
-      function render() {
-        const q = $('q').value.trim(), county = $('f-county').value, sort = $('sort').value;
-        let list = shelters.filter(s =>
-          (!county || s.CityName === county) &&
-          (!q || s.ShelterName.includes(q)));
-        list = list.map(s => ({ ...s, count: counts[s.ShelterName] || 0 }));
-        if (sort === 'name') list.sort((a, b) => a.ShelterName.localeCompare(b.ShelterName, 'zh-TW'));
-        else if (sort === 'count') list.sort((a, b) => b.count - a.count);
-        else list.sort((a, b) => (a.Seq || 0) - (b.Seq || 0));
-        document.getElementById('count').textContent = `共 ${list.length} 間`;
-        document.getElementById('grid').innerHTML = list.map(s => `
-          <div class="card">
-            <div><a href="./../shelter/?id=${s.ID}">${s.ShelterName}</a></div>
-            <div>${s.CityName} · 在養約 ${s.count} 隻</div>
-            <div>${s.Address}</div>
-            <div>${s.Phone}</div>
-          </div>`).join('');
-      }
-      document.querySelector('.filters').addEventListener('input', render);
-      render();
-    </script>
+  <style>
+    @media (max-width: 768px) {
+      #overview-filters { grid-template-columns: 1fr !important; }
+    }
+  </style>
+
+  <script type="module">
+    const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+
+    const shelters = await (await fetch(`${base}/data/shelters.json`)).json();
+    const idx = await (await fetch(`${base}/data/search-index.json`)).json();
+    const counts = {};
+    for (const r of idx.records) counts[r.shelter] = (counts[r.shelter] || 0) + 1;
+
+    const $ = (id) => document.getElementById(id);
+    for (const c of [...new Set(shelters.map((s) => s.CityName))].filter(Boolean).sort()) {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      $('f-county').appendChild(o);
+    }
+
+    function render() {
+      const q = $('q').value.trim(), county = $('f-county').value, sort = $('sort').value;
+      let list = shelters
+        .filter((s) => (!county || s.CityName === county) && (!q || s.ShelterName.includes(q)))
+        .map((s) => ({ ...s, count: counts[s.ShelterName] || 0 }));
+      if (sort === 'name') list.sort((a, b) => a.ShelterName.localeCompare(b.ShelterName, 'zh-TW'));
+      else if (sort === 'count') list.sort((a, b) => b.count - a.count);
+      else list.sort((a, b) => (a.Seq || 0) - (b.Seq || 0));
+      $('count').textContent = `共 ${list.length} 間收容所`;
+      $('grid').innerHTML = list.map((s) => `
+        <div class="card" style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <div>
+            <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(s.CityName || '')}</span>
+            <span class="badge" style="background:#f3f4f6; color:#374151;">在養約 ${s.count} 隻</span>
+          </div>
+          <a href="${base}/shelter/?id=${encodeURIComponent(s.ID)}" style="font-size: 1.1rem; font-weight: 700; color: #111827; text-decoration: none;">${esc(s.ShelterName)}</a>
+          <div style="font-size: 0.85rem; color: #374151;">${esc(s.Address)} ｜ ${esc(s.Phone)}</div>
+        </div>`).join('');
+    }
+    document.getElementById('overview-filters').addEventListener('input', render);
+    render();
+  </script>
 </Layout>

@@ -5,44 +5,62 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <Layout title="收容所｜動物認領養查詢" base={base}>
-    <div id="app">載入中…</div>
-    <script type="module">
-      const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
-      const id = new URLSearchParams(location.search).get('id');
-      const app = document.getElementById('app');
-      const shelters = await (await fetch(`${base}/data/shelters.json`)).json();
-      const s = shelters.find((x) => x.ID === id);
-      if (!s) { app.textContent = '找不到收容所'; throw new Error('no shelter'); }
-      const idx = await (await fetch(`${base}/data/search-index.json`)).json();
-      const mine = idx.records.filter((r) => r.shelter === s.ShelterName || r.shelterId === s.ID);
-      const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.Address || s.ShelterName)}`;
-      app.innerHTML = `
-        <div class="card">
-          <h1>${s.ShelterName}</h1>
-          <p>${s.CityName} ｜ ${s.Address} ｜ ${s.Phone}</p>
-          <p>開放時間：${s.OpenTime || '未知'}</p>
+  <div id="app">
+    <div class="card" style="padding: 2rem; text-align: center; color: #6b7280;">載入中…</div>
+  </div>
+
+  <script type="module">
+    const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+
+    const id = new URLSearchParams(location.search).get('id');
+    const app = document.getElementById('app');
+    const shelters = await (await fetch(`${base}/data/shelters.json`)).json();
+    const s = shelters.find((x) => x.ID === id);
+    if (!s) { app.textContent = '找不到收容所'; throw new Error('no shelter'); }
+    const idx = await (await fetch(`${base}/data/search-index.json`)).json();
+    const mine = idx.records.filter((r) => r.shelter === s.ShelterName || r.shelterId === s.ID);
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.Address || s.ShelterName)}`;
+    app.innerHTML = `
+      <div class="card" style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>
+          <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(s.CityName || '')}</span>
+          <span class="badge" style="background:#f3f4f6; color:#374151;">在養約 ${mine.length} 隻</span>
+        </div>
+        <h1 style="font-size: 1.4rem; color: #111827;">${esc(s.ShelterName)}</h1>
+        <div style="font-size: 0.9rem; color: #374151;">
+          <p>${esc(s.Address)} ｜ ${esc(s.Phone)}</p>
+          <p>開放時間：${esc(s.OpenTime || '未知')}</p>
           <p><a href="${mapUrl}" target="_blank" rel="noopener">地圖外連 →</a>
-          ${s.Url ? ` · <a href="${s.Url}" target="_blank" rel="noopener">官方網站 →</a>` : ''}</p>
-          <p>在養約 ${mine.length} 隻（僅供參考，被認養即下架有延遲屬正常）</p>
+          ${s.Url ? ` · <a href="${esc(s.Url)}" target="_blank" rel="noopener">官方網站 →</a>` : ''}</p>
+          <p style="font-size: 0.85rem; color: #6b7280;">在養數量僅供參考，被認養即下架有延遲屬正常。</p>
         </div>
-        <div class="card">
-          <h2>名下在養動物</h2>
-          <select id="f-kind"><option value="">全部種類</option><option>狗</option><option>貓</option></select>
-          <div class="grid" id="grid"></div>
-        </div>
-        <p>本站內容整理自政府開放資料，僅供查詢參考，不構成飼養或醫療建議。以主管機關公告為準。</p>`;
-      const grid = document.getElementById('grid');
-      const render = () => {
-        const k = document.getElementById('f-kind').value;
-        const list = mine.filter((r) => !k || r.kind === k || (k === '狗' && r.kind.includes('狗'))).slice(0, 200);
-        grid.innerHTML = list.map((r) => `
-          <div class="mini">
-            <img loading="lazy" src="${r.photo}" onerror="this.style.display='none'" />
-            <div>${r.variety || r.kind} · ${r.sex} · ${r.bodytype}</div>
-            <div><a href="../animal/?id=${r.id}">詳情 →</a></div>
-          </div>`).join('') || '目前無資料';
-      };
-      document.getElementById('f-kind').addEventListener('input', render);
-      render();
-    </script>
+      </div>
+      <div class="card" style="margin-top: 1rem;">
+        <h2 style="font-size: 1.05rem; color: #111827; margin-bottom: 0.5rem;">名下在養動物</h2>
+        <select id="f-kind" class="input-text" style="max-width: 200px; margin-bottom: 0.75rem;">
+          <option value="">全部種類</option>
+          <option value="狗">狗</option>
+          <option value="貓">貓</option>
+        </select>
+        <div id="grid" style="display: flex; flex-direction: column; gap: 0.6rem;"></div>
+      </div>`;
+    const grid = document.getElementById('grid');
+    const render = () => {
+      const k = document.getElementById('f-kind').value;
+      const list = mine.filter((r) => !k || r.kind === k).slice(0, 200);
+      grid.innerHTML = list.map((r) => `
+        <div style="display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+          <div>
+            <span class="badge" style="background:#f3f4f6; color:#374151;">${esc(r.kind || '')}</span>
+            <a href="${base}/animal/?id=${encodeURIComponent(r.id)}">${esc(r.variety || '品種未知')} · ${esc(r.sex)} · ${esc(r.subId)}</a>
+          </div>
+          <div style="font-size: 0.85rem; color: #6b7280;">${esc(r.bodytype)} · ${esc(r.age)}</div>
+        </div>`).join('') || '目前無資料';
+    };
+    document.getElementById('f-kind').addEventListener('input', render);
+    render();
+  </script>
 </Layout>
