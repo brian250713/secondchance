@@ -5,107 +5,356 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <Layout title="動物認領養查詢" base={base}>
-      <div class="filters" id="filters">
-        <input id="q" placeholder="關鍵字：編號/品種/毛色/尋獲地" />
-        <select id="f-kind"><option value="">種類</option></select>
-        <select id="f-sex"><option value="">性別</option></select>
-        <select id="f-bodytype"><option value="">體型</option></select>
-        <select id="f-age"><option value="">年紀</option></select>
-        <select id="f-ster"><option value="">絕育</option></select>
-        <select id="f-county"><option value="">縣市</option></select>
-        <select id="f-shelter"><option value="">收容所</option></select>
-        <label><input type="checkbox" id="f-fav" /> 只看收藏</label>
-        <button class="share" id="share">複製分享網址</button>
+  <div id="search-app" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="card" style="background: linear-gradient(to bottom, #ffffff, var(--primary-light)); padding: 1.5rem;">
+      <h1 style="font-size: 1.5rem; color: var(--primary-hover); margin-bottom: 0.5rem;">待認養動物檢索</h1>
+      <p style="font-size: 0.9rem; color: #4b5563; margin-bottom: 1rem;">
+        支援收容編號、品種、毛色與尋獲地文字模糊搜尋，可依種類、性別、體型、年紀、絕育、縣市與收容所篩選。
+      </p>
+
+      <div style="position: relative;">
+        <input
+          type="text"
+          id="search-input"
+          class="input-text"
+          placeholder="輸入收容編號、品種、毛色或尋獲地..."
+          style="font-size: 1.05rem; padding: 0.75rem 1rem; border-radius: 8px; border: 2px solid var(--primary);"
+          autocomplete="off"
+        />
+        <div id="index-loading-badge" style="display: none; position: absolute; right: 12px; top: 12px; font-size: 0.85rem; color: var(--primary-hover); background: var(--primary-light); padding: 0.1rem 0.5rem; border-radius: 4px;">
+          載入索引中...
+        </div>
       </div>
-      <div class="count" id="count"></div>
-      <div class="grid" id="grid"></div>
-    <script type="module">
-      const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
-      const res = await fetch(`${base}/data/search-index.json`);
-      const { records } = await res.json();
+    </div>
 
-      const $ = (id) => document.getElementById(id);
-      const params = new URLSearchParams(location.search);
-      for (const [k, el] of [['keyword','q'],['kind','f-kind'],['sex','f-sex'],['bodytype','f-bodytype'],['age','f-age'],['sterilization','f-ster'],['county','f-county'],['shelter','f-shelter']]) {
-        if (params.get(k)) $(el).value = params.get(k);
+    <div style="display: grid; grid-template-columns: 260px 1fr; gap: 1.5rem; align-items: start;" id="main-content-layout">
+      <button id="toggle-filter-btn" class="btn btn-secondary" style="display: none; width: 100%; margin-bottom: 0.5rem;">
+        展開篩選條件 ▾
+      </button>
+
+      <aside class="card" id="filter-panel" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="font-size: 1.05rem; color: #111827; margin: 0;">篩選條件</h2>
+          <button id="reset-filter-btn" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 0.8rem; text-decoration: underline;">重設</button>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">種類</label>
+          <select id="filter-kind" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部種類</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">性別</label>
+          <select id="filter-sex" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部性別</option>
+            <option value="公">公</option>
+            <option value="母">母</option>
+            <option value="未知">未知</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">體型</label>
+          <select id="filter-bodytype" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部體型</option>
+            <option value="大型">大型</option>
+            <option value="中型">中型</option>
+            <option value="小型">小型</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">年紀</label>
+          <select id="filter-age" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部年紀</option>
+            <option value="成年">成年</option>
+            <option value="幼年">幼年</option>
+            <option value="未知">未知</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">絕育</label>
+          <select id="filter-ster" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部</option>
+            <option value="已絕育">已絕育</option>
+            <option value="未絕育">未絕育</option>
+            <option value="未輸入">未輸入</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">縣市</label>
+          <select id="filter-county" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部縣市</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.85rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.35rem;">收容所</label>
+          <select id="filter-shelter" class="input-text" style="font-size: 0.9rem; padding: 0.4rem;">
+            <option value="">全部收容所</option>
+          </select>
+        </div>
+
+        <div>
+          <button id="share-btn" class="btn btn-secondary" style="width: 100%; font-size: 0.85rem;">複製分享網址</button>
+        </div>
+      </aside>
+
+      <section style="display: flex; flex-direction: column; gap: 1rem;">
+        <div id="results-meta-bar" style="font-size: 0.9rem; color: #4b5563; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem;">
+          <span>查詢結果：共 <strong id="result-count" style="color: var(--primary-hover);">0</strong> 筆待認養動物</span>
+          <span id="initial-hint" style="color: #6b7280; font-size: 0.85rem;">點選搜尋框即可啟用完整檢索</span>
+        </div>
+
+        <div id="results-list" style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <div class="card" style="padding: 2.5rem 1rem; text-align: center; color: #6b7280;">
+            <p style="font-size: 1.1rem; margin-bottom: 0.5rem; color: #374151;">請輸入關鍵字或選擇左側分類篩選</p>
+            <p style="font-size: 0.85rem;">點擊搜尋框立即載入離線搜尋引擎</p>
+          </div>
+        </div>
+
+        <div id="pagination-bar" style="display: none; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
+          <button id="prev-page-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">上一頁</button>
+          <span id="page-indicator" style="display: flex; align-items: center; font-size: 0.9rem; color: #374151;"></span>
+          <button id="next-page-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">下一頁</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <style>
+    @media (max-width: 768px) {
+      #main-content-layout {
+        grid-template-columns: 1fr !important;
       }
+      #toggle-filter-btn {
+        display: block !important;
+      }
+      #filter-panel {
+        display: none;
+      }
+      #filter-panel.show-mobile {
+        display: flex !important;
+      }
+    }
+  </style>
 
-      const fill = (el, values) => {
-        const cur = $(el).value;
-        for (const v of [...new Set(values)].sort()) {
-          if (!v) continue;
+  <script type="module">
+    const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
+
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+
+    let allDocs = [];
+    let isIndexLoaded = false;
+    let isIndexLoading = false;
+    let currentPage = 1;
+    const PAGE_SIZE = 20;
+    let currentFilteredList = [];
+    let lastSearchKey = null;
+
+    async function loadSearchIndex() {
+      if (isIndexLoaded || isIndexLoading) return;
+      isIndexLoading = true;
+      const badge = document.getElementById('index-loading-badge');
+      if (badge) badge.style.display = 'block';
+      try {
+        const res = await fetch(`${base}/data/search-index.json`);
+        const json = await res.json();
+        allDocs = json.records;
+        isIndexLoaded = true;
+        fillDynamicFilters();
+      } catch (e) {
+        console.error('Failed to load search index:', e);
+      } finally {
+        isIndexLoading = false;
+        if (badge) badge.style.display = 'none';
+        const hint = document.getElementById('initial-hint');
+        if (hint) hint.textContent = '搜尋索引已就緒';
+      }
+    }
+
+    function fillDynamicFilters() {
+      const fill = (id, values) => {
+        const el = document.getElementById(id);
+        for (const v of [...new Set(values)].filter(Boolean).sort()) {
           const o = document.createElement('option');
           o.value = v; o.textContent = v;
-          $(el).appendChild(o);
+          el.appendChild(o);
         }
-        $(el).value = cur;
       };
-      fill('f-kind', records.map(r => r.kind));
-      fill('f-sex', records.map(r => r.sex));
-      fill('f-bodytype', records.map(r => r.bodytype));
-      fill('f-age', records.map(r => r.age));
-      fill('f-ster', records.map(r => r.sterilization));
-      fill('f-county', records.map(r => r.county));
-      fill('f-shelter', records.map(r => r.shelter));
+      fill('filter-kind', allDocs.map((r) => r.kind));
+      fill('filter-county', allDocs.map((r) => r.county));
+      fill('filter-shelter', allDocs.map((r) => r.shelter));
+      restoreStateFromUrl();
+    }
 
-      const tokenize = (q) => {
-        const s = q.toLowerCase().trim().replace(/\s+/g, '');
-        if (!s) return [];
-        const out = [];
-        if (/^[a-z0-9]+$/.test(s)) out.push(s);
-        for (let i = 0; i < s.length; i++) {
-          if (s.charCodeAt(i) > 127) out.push(s.slice(i, i + 2));
-        }
-        return [...new Set(out)];
-      };
-
-      function render() {
-        const favOnly = $('f-fav').checked;
-        let favSet = new Set();
-        try { favSet = new Set(JSON.parse(localStorage.getItem('fav-animals') || '[]').map(Number)); } catch {}
-        const f = {
-          keyword: $('q').value, kind: $('f-kind').value, sex: $('f-sex').value,
-          bodytype: $('f-bodytype').value, age: $('f-age').value, sterilization: $('f-ster').value,
-          county: $('f-county').value, shelter: $('f-shelter').value,
-        };
-        const toks = tokenize(f.keyword);
-        const list = records.filter(r => {
-          if (favOnly && !favSet.has(Number(r.id))) return false;
-          if (f.kind && r.kind !== f.kind) return false;
-          if (f.sex && r.sex !== f.sex) return false;
-          if (f.bodytype && r.bodytype !== f.bodytype) return false;
-          if (f.age && r.age !== f.age) return false;
-          if (f.sterilization && r.sterilization !== f.sterilization) return false;
-          if (f.county && r.county !== f.county) return false;
-          if (f.shelter && r.shelter !== f.shelter) return false;
-          if (toks.length) {
-            const hay = `${r.subId} ${r.variety} ${r.colour} ${r.foundPlace} ${r.remark}`.toLowerCase();
-            if (!toks.every(t => hay.includes(t))) return false;
-          }
-          return true;
-        });
-        $('count').textContent = `共 ${list.length} 筆（全部 ${records.length}）`;
-        $('grid').innerHTML = list.slice(0, 300).map(r => `
-          <div class="card">
-            <img loading="lazy" src="${r.photo}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27240%27 height=%27180%27><rect width=%27100%25%27 height=%27100%25%27 fill=%27%23ccfbf1%27/><text x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27>無照片</text></svg>'" />
-            <div class="body">
-              <div><span class="tag hot">${r.kind}</span><span class="tag">${r.variety || '品種未知'}</span></div>
-              <div><span class="tag">${r.sex}</span><span class="tag">${r.bodytype}</span><span class="tag">${r.age}</span></div>
-              <div>${r.county} · ${r.shelter}</div>
-              <div>${r.longTermOpen ? '長期開放' : r.openDate} · ${r.subId}</div>
-              <div><a href="./animal/?id=${r.id}">詳情 →</a></div>
-            </div>
-          </div>`).join('');
-        const sp = new URLSearchParams();
-        for (const [k, v] of Object.entries(f)) if (v) sp.set(k, v);
-        history.replaceState(null, '', sp.toString() ? '?' + sp.toString() : location.pathname);
+    function tokenize(q) {
+      const s = q.toLowerCase().trim().replace(/\s+/g, '');
+      if (!s) return [];
+      const out = [];
+      if (/^[a-z0-9]+$/.test(s)) out.push(s);
+      for (let i = 0; i < s.length; i++) {
+        if (s.charCodeAt(i) > 127) out.push(s.slice(i, i + 2));
       }
+      return [...new Set(out)];
+    }
 
-      document.getElementById('filters').addEventListener('input', render);
-      document.getElementById('share').onclick = async () => {
+    function getFilterState() {
+      return {
+        query: document.getElementById('search-input')?.value.trim() || '',
+        kind: document.getElementById('filter-kind')?.value || '',
+        sex: document.getElementById('filter-sex')?.value || '',
+        bodytype: document.getElementById('filter-bodytype')?.value || '',
+        age: document.getElementById('filter-age')?.value || '',
+        sterilization: document.getElementById('filter-ster')?.value || '',
+        county: document.getElementById('filter-county')?.value || '',
+        shelter: document.getElementById('filter-shelter')?.value || '',
+      };
+    }
+
+    function syncStateToUrl(state) {
+      const url = new URL(window.location.href);
+      const map = { query: 'keyword', kind: 'kind', sex: 'sex', bodytype: 'bodytype', age: 'age', sterilization: 'sterilization', county: 'county', shelter: 'shelter' };
+      for (const [k, p] of Object.entries(map)) {
+        if (state[k]) url.searchParams.set(p, state[k]); else url.searchParams.delete(p);
+      }
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    function restoreStateFromUrl() {
+      const p = new URLSearchParams(window.location.search);
+      const map = { keyword: 'search-input', kind: 'filter-kind', sex: 'filter-sex', bodytype: 'filter-bodytype', age: 'filter-age', sterilization: 'filter-ster', county: 'filter-county', shelter: 'filter-shelter' };
+      for (const [param, id] of Object.entries(map)) {
+        if (p.get(param)) document.getElementById(id).value = p.get(param);
+      }
+    }
+
+    async function runSearchAndFilter() {
+      if (!isIndexLoaded) await loadSearchIndex();
+      if (!isIndexLoaded) return;
+      const state = getFilterState();
+      syncStateToUrl(state);
+      const key = JSON.stringify(state);
+      if (key === lastSearchKey) return;
+      lastSearchKey = key;
+
+      const toks = tokenize(state.query);
+      currentFilteredList = allDocs.filter((r) => {
+        if (state.kind && r.kind !== state.kind) return false;
+        if (state.sex && r.sex !== state.sex) return false;
+        if (state.bodytype && r.bodytype !== state.bodytype) return false;
+        if (state.age && r.age !== state.age) return false;
+        if (state.sterilization && r.sterilization !== state.sterilization) return false;
+        if (state.county && r.county !== state.county) return false;
+        if (state.shelter && r.shelter !== state.shelter) return false;
+        if (toks.length) {
+          const hay = `${r.subId} ${r.variety} ${r.colour} ${r.foundPlace} ${r.remark}`.toLowerCase();
+          if (!toks.every((t) => hay.includes(t))) return false;
+        }
+        return true;
+      });
+      currentPage = 1;
+      document.getElementById('result-count').textContent = currentFilteredList.length.toLocaleString();
+      renderPage();
+    }
+
+    function renderPage() {
+      const container = document.getElementById('results-list');
+      container.innerHTML = '';
+      if (currentFilteredList.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="padding: 2rem; text-align: center; color: #6b7280;">
+            <p style="font-size: 1.1rem; color: #374151; margin-bottom: 0.5rem;">查無符合條件的待認養動物</p>
+            <p style="font-size: 0.85rem;">請嘗試減少篩選條件或更換關鍵字。</p>
+          </div>`;
+        document.getElementById('pagination-bar').style.display = 'none';
+        return;
+      }
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const pageItems = currentFilteredList.slice(start, start + PAGE_SIZE);
+      for (const r of pageItems) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = '0.6rem';
+        card.innerHTML = `
+          <div>
+            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.25rem;">
+              <span class="badge" style="background:#f3f4f6; color:#374151;">${esc(r.kind || '')}</span>
+              <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(r.sex || '')}</span>
+              <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(r.bodytype || '')}</span>
+              <span class="badge" style="background: var(--primary-light); color: var(--primary-hover); border: 1px solid var(--border);">${esc(r.age || '')}</span>
+              <span style="font-size:0.8rem; color:#6b7280;">${esc(r.subId || '')}</span>
+            </div>
+            <a href="${base}/animal/?id=${encodeURIComponent(r.id)}" style="font-size:1.15rem; font-weight:700; color:#111827; text-decoration:none;">${esc(r.variety || '品種未知')} · ${esc(r.colour || '')}</a>
+          </div>
+          <div style="font-size:0.85rem; color:#374151; display:flex; flex-wrap:wrap; gap:1rem;">
+            <span>縣市：<strong>${esc(r.county || '未知')}</strong></span>
+            <span>收容所：<strong>${esc(r.shelter || '')}</strong></span>
+            <span>開放：<strong>${esc(r.longTermOpen ? '長期開放' : r.openDate)}</strong></span>
+            <span>絕育：<strong>${esc(r.sterilization || '')}</strong></span>
+          </div>`;
+        container.appendChild(card);
+      }
+      const totalPages = Math.ceil(currentFilteredList.length / PAGE_SIZE);
+      const bar = document.getElementById('pagination-bar');
+      if (totalPages > 1) {
+        bar.style.display = 'flex';
+        document.getElementById('page-indicator').textContent = `第 ${currentPage} / ${totalPages} 頁 (共 ${currentFilteredList.length} 筆)`;
+        document.getElementById('prev-page-btn').disabled = currentPage <= 1;
+        document.getElementById('next-page-btn').disabled = currentPage >= totalPages;
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('search-input');
+      const p = new URLSearchParams(window.location.search);
+      if (p.toString().length > 0) {
+        runSearchAndFilter();
+      } else {
+        searchInput.addEventListener('focus', () => { runSearchAndFilter(); }, { once: true });
+      }
+      let debounceTimer = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => { runSearchAndFilter(); }, 200);
+      });
+      ['filter-kind', 'filter-sex', 'filter-bodytype', 'filter-age', 'filter-ster', 'filter-county', 'filter-shelter'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', () => { runSearchAndFilter(); });
+      });
+      document.getElementById('reset-filter-btn')?.addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        ['filter-kind', 'filter-sex', 'filter-bodytype', 'filter-age', 'filter-ster', 'filter-county', 'filter-shelter'].forEach((id) => { document.getElementById(id).value = ''; });
+        runSearchAndFilter();
+      });
+      document.getElementById('share-btn')?.addEventListener('click', async () => {
         await navigator.clipboard.writeText(location.href);
         alert('已複製分享網址');
-      };
-      render();
-    </script>
+      });
+      const toggleBtn = document.getElementById('toggle-filter-btn');
+      const filterPanel = document.getElementById('filter-panel');
+      if (toggleBtn && filterPanel) {
+        toggleBtn.addEventListener('click', () => {
+          filterPanel.classList.toggle('show-mobile');
+          toggleBtn.textContent = filterPanel.classList.contains('show-mobile') ? '收合篩選條件 ▴' : '展開篩選條件 ▾';
+        });
+      }
+      document.getElementById('prev-page-btn')?.addEventListener('click', () => {
+        if (currentPage > 1) { currentPage--; renderPage(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      });
+      document.getElementById('next-page-btn')?.addEventListener('click', () => {
+        const totalPages = Math.ceil(currentFilteredList.length / PAGE_SIZE);
+        if (currentPage < totalPages) { currentPage++; renderPage(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      });
+    });
+  </script>
 </Layout>
