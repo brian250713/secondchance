@@ -8,7 +8,7 @@
     "preview": "astro preview",
     "test": "vitest run",
     "fetch": "tsx scripts/fetch.ts",
-    "normalize": "tsx scripts/normalize.ts",
+    "normalize": "tsx scripts/normalize.ts && tsx scripts/build-search-index.ts && tsx scripts/build-shards.ts",
     "lint": "tsc --noEmit",
     "verify": "tsx scripts/verify-release.ts",
     "update-baseline": "tsx scripts/update-baseline.ts"
