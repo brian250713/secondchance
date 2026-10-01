@@ -38,3 +38,4 @@ shelterBuckets.forEach((bucket, i) => {
 });
 
 console.log(`[shards] animal ${SHARD_ANIMALS} 片 / shelter ${SHARD_SHELTERS} 片，動物 ${animals.length} 筆`);
+fs.writeFileSync(path.join(projectRoot, 'public', 'data', 'shelters.json'), JSON.stringify(shelters), 'utf-8');

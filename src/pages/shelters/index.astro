@@ -1,0 +1,65 @@
+---
+---
+
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>收容所總覽｜動物認領養查詢</title>
+    <style>
+      :root { --teal: #0d9488; --bg: #f0fdfa; }
+      body { font-family: system-ui, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; color: #134e4a; }
+      header { background: var(--teal); color: #fff; padding: 1.2rem; }
+      header a { color: #fff; margin-right: 1rem; }
+      main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+      .filters { display: flex; gap: 0.5rem; background: #fff; padding: 1rem; border-radius: 1rem; margin: 1rem 0; flex-wrap: wrap; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+      .card { background: #fff; border-radius: 1rem; padding: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <header><a href="../">← 首頁</a><span>收容所總覽</span></header>
+    <main>
+      <div class="filters">
+        <input id="q" placeholder="名稱過濾" />
+        <select id="f-county"><option value="">縣市</option></select>
+        <select id="sort"><option value="seq">排序：預設</option><option value="name">名稱</option><option value="count">在養數量</option></select>
+      </div>
+      <div id="count"></div>
+      <div class="grid" id="grid"></div>
+      <p>本站內容整理自政府開放資料，僅供查詢參考，不構成飼養或醫療建議。以主管機關公告為準。</p>
+    </main>
+    <script type="module">
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const shelters = await (await fetch(`${base}/data/shelters.json`)).json();
+      const idx = await (await fetch(`${base}/data/search-index.json`)).json();
+      const counts = {};
+      for (const r of idx.records) counts[r.shelter] = (counts[r.shelter] || 0) + 1;
+
+      const $ = (id) => document.getElementById(id);
+      const fill = [...new Set(shelters.map(s => s.CityName))].sort();
+      for (const c of fill) { const o = document.createElement('option'); o.value = c; o.textContent = c; $('f-county').appendChild(o); }
+
+      function render() {
+        const q = $('q').value.trim(), county = $('f-county').value, sort = $('sort').value;
+        let list = shelters.filter(s =>
+          (!county || s.CityName === county) &&
+          (!q || s.ShelterName.includes(q)));
+        list = list.map(s => ({ ...s, count: counts[s.ShelterName] || 0 }));
+        if (sort === 'name') list.sort((a, b) => a.ShelterName.localeCompare(b.ShelterName, 'zh-TW'));
+        else if (sort === 'count') list.sort((a, b) => b.count - a.count);
+        else list.sort((a, b) => (a.Seq || 0) - (b.Seq || 0));
+        document.getElementById('count').textContent = `共 ${list.length} 間`;
+        document.getElementById('grid').innerHTML = list.map(s => `
+          <div class="card">
+            <div><a href="./../shelter/?id=${s.ID}">${s.ShelterName}</a></div>
+            <div>${s.CityName} · 在養約 ${s.count} 隻</div>
+            <div>${s.Address}</div>
+            <div>${s.Phone}</div>
+          </div>`).join('');
+      }
+      document.querySelector('.filters').addEventListener('input', render);
+      render();
+    </script>
+  </body>
+</html>
