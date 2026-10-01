@@ -1,5 +1,4 @@
 ---
-// T1 最小首頁，後續 T4 會長成完整列表
 ---
 
 <html lang="zh-TW">
@@ -7,11 +6,129 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>動物認領養查詢</title>
+    <style>
+      :root { --teal: #0d9488; --orange: #fb923c; --bg: #f0fdfa; }
+      body { font-family: system-ui, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; color: #134e4a; }
+      header { background: var(--teal); color: #fff; padding: 1.2rem; border-radius: 0 0 1.2rem 1.2rem; }
+      header a { color: #fff; margin-right: 1rem; }
+      main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+      .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; background: #fff; padding: 1rem; border-radius: 1rem; margin: 1rem 0; }
+      .filters select, .filters input { padding: 0.45rem 0.6rem; border-radius: 0.7rem; border: 1px solid #99f6e4; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+      .card { background: #fff; border-radius: 1rem; overflow: hidden; box-shadow: 0 2px 8px rgba(13,148,136,.12); }
+      .card img { width: 100%; height: 180px; object-fit: cover; background: #ccfbf1; }
+      .card .body { padding: 0.8rem; }
+      .tag { display: inline-block; background: #ccfbf1; border-radius: 999px; padding: 0.1rem 0.6rem; margin: 0.1rem; font-size: 0.85rem; }
+      .tag.hot { background: #ffedd5; }
+      .count { margin: 0.5rem 0; }
+      button.share { background: var(--orange); border: 0; color: #fff; border-radius: 0.7rem; padding: 0.45rem 0.8rem; cursor: pointer; }
+    </style>
   </head>
   <body>
-    <main>
+    <header>
       <h1>動物認領養查詢</h1>
-      <p>資料整理自農業部開放資料，僅供查詢參考。</p>
+      <nav><a href="./">首頁</a><a href="./shelters">收容所總覽</a></nav>
+      <p>資料整理自農業部開放資料，僅供查詢參考，以主管機關公告為準。</p>
+    </header>
+    <main>
+      <div class="filters" id="filters">
+        <input id="q" placeholder="關鍵字：編號/品種/毛色/尋獲地" />
+        <select id="f-kind"><option value="">種類</option></select>
+        <select id="f-sex"><option value="">性別</option></select>
+        <select id="f-bodytype"><option value="">體型</option></select>
+        <select id="f-age"><option value="">年紀</option></select>
+        <select id="f-ster"><option value="">絕育</option></select>
+        <select id="f-county"><option value="">縣市</option></select>
+        <select id="f-shelter"><option value="">收容所</option></select>
+        <button class="share" id="share">複製分享網址</button>
+      </div>
+      <div class="count" id="count"></div>
+      <div class="grid" id="grid"></div>
     </main>
+    <script type="module">
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const res = await fetch(`${base}/data/search-index.json`);
+      const { records } = await res.json();
+
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      for (const [k, el] of [['keyword','q'],['kind','f-kind'],['sex','f-sex'],['bodytype','f-bodytype'],['age','f-age'],['sterilization','f-ster'],['county','f-county'],['shelter','f-shelter']]) {
+        if (params.get(k)) $(el).value = params.get(k);
+      }
+
+      const fill = (el, values) => {
+        const cur = $(el).value;
+        for (const v of [...new Set(values)].sort()) {
+          if (!v) continue;
+          const o = document.createElement('option');
+          o.value = v; o.textContent = v;
+          $(el).appendChild(o);
+        }
+        $(el).value = cur;
+      };
+      fill('f-kind', records.map(r => r.kind));
+      fill('f-sex', records.map(r => r.sex));
+      fill('f-bodytype', records.map(r => r.bodytype));
+      fill('f-age', records.map(r => r.age));
+      fill('f-ster', records.map(r => r.sterilization));
+      fill('f-county', records.map(r => r.county));
+      fill('f-shelter', records.map(r => r.shelter));
+
+      const tokenize = (q) => {
+        const s = q.toLowerCase().trim().replace(/\s+/g, '');
+        if (!s) return [];
+        const out = [];
+        if (/^[a-z0-9]+$/.test(s)) out.push(s);
+        for (let i = 0; i < s.length; i++) {
+          if (s.charCodeAt(i) > 127) out.push(s.slice(i, i + 2));
+        }
+        return [...new Set(out)];
+      };
+
+      function render() {
+        const f = {
+          keyword: $('q').value, kind: $('f-kind').value, sex: $('f-sex').value,
+          bodytype: $('f-bodytype').value, age: $('f-age').value, sterilization: $('f-ster').value,
+          county: $('f-county').value, shelter: $('f-shelter').value,
+        };
+        const toks = tokenize(f.keyword);
+        const list = records.filter(r => {
+          if (f.kind && r.kind !== f.kind) return false;
+          if (f.sex && r.sex !== f.sex) return false;
+          if (f.bodytype && r.bodytype !== f.bodytype) return false;
+          if (f.age && r.age !== f.age) return false;
+          if (f.sterilization && r.sterilization !== f.sterilization) return false;
+          if (f.county && r.county !== f.county) return false;
+          if (f.shelter && r.shelter !== f.shelter) return false;
+          if (toks.length) {
+            const hay = `${r.subId} ${r.variety} ${r.colour} ${r.foundPlace} ${r.remark}`.toLowerCase();
+            if (!toks.every(t => hay.includes(t))) return false;
+          }
+          return true;
+        });
+        $('count').textContent = `共 ${list.length} 筆（全部 ${records.length}）`;
+        $('grid').innerHTML = list.slice(0, 300).map(r => `
+          <div class="card">
+            <img loading="lazy" src="${r.photo}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27240%27 height=%27180%27><rect width=%27100%25%27 height=%27100%25%27 fill=%27%23ccfbf1%27/><text x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27>無照片</text></svg>'" />
+            <div class="body">
+              <div><span class="tag hot">${r.kind}</span><span class="tag">${r.variety || '品種未知'}</span></div>
+              <div><span class="tag">${r.sex}</span><span class="tag">${r.bodytype}</span><span class="tag">${r.age}</span></div>
+              <div>${r.county} · ${r.shelter}</div>
+              <div>${r.longTermOpen ? '長期開放' : r.openDate} · ${r.subId}</div>
+              <div><a href="./animal/?id=${r.id}">詳情 →</a></div>
+            </div>
+          </div>`).join('');
+        const sp = new URLSearchParams();
+        for (const [k, v] of Object.entries(f)) if (v) sp.set(k, v);
+        history.replaceState(null, '', sp.toString() ? '?' + sp.toString() : location.pathname);
+      }
+
+      document.getElementById('filters').addEventListener('input', render);
+      document.getElementById('share').onclick = async () => {
+        await navigator.clipboard.writeText(location.href);
+        alert('已複製分享網址');
+      };
+      render();
+    </script>
   </body>
 </html>
