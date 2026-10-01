@@ -1,4 +1,5 @@
 ---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <html lang="zh-TW">
@@ -21,9 +22,9 @@
   </head>
   <body>
     <header><a href="../">← 回列表</a><span>動物詳情</span></header>
-    <main><div id="app">載入中…</div></main>
+    <main data-base={base}><div id="app">載入中…</div></main>
     <script type="module">
-      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const base = (document.querySelector('main').dataset.base || '').replace(/\/$/, '');
       const id = new URLSearchParams(location.search).get('id');
       const app = document.getElementById('app');
       if (!id) { app.textContent = '缺少 id'; throw new Error('no id'); }
