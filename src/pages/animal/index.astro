@@ -1,0 +1,84 @@
+---
+---
+
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>動物詳情｜動物認領養查詢</title>
+    <style>
+      :root { --teal: #0d9488; --orange: #fb923c; --bg: #f0fdfa; }
+      body { font-family: system-ui, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; color: #134e4a; }
+      header { background: var(--teal); color: #fff; padding: 1.2rem; }
+      header a { color: #fff; margin-right: 1rem; }
+      main { max-width: 900px; margin: 0 auto; padding: 1rem; }
+      .card { background: #fff; border-radius: 1rem; padding: 1rem; margin: 1rem 0; }
+      img.photo { width: 100%; max-height: 420px; object-fit: cover; border-radius: 1rem; background: #ccfbf1; }
+      .tag { display: inline-block; background: #ccfbf1; border-radius: 999px; padding: 0.1rem 0.6rem; margin: 0.1rem; }
+      button { background: var(--orange); border: 0; color: #fff; border-radius: 0.7rem; padding: 0.5rem 1rem; cursor: pointer; margin-right: 0.5rem; }
+      button.ghost { background: #fff; color: var(--teal); border: 1px solid var(--teal); }
+    </style>
+  </head>
+  <body>
+    <header><a href="../">← 回列表</a><span>動物詳情</span></header>
+    <main><div id="app">載入中…</div></main>
+    <script type="module">
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const id = new URLSearchParams(location.search).get('id');
+      const app = document.getElementById('app');
+      if (!id) { app.textContent = '缺少 id'; throw new Error('no id'); }
+
+      function fnv1a(str) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+        return h >>> 0;
+      }
+      const favs = () => { try { return JSON.parse(localStorage.getItem('fav-animals') || '[]'); } catch { return []; } };
+      const isFav = (n) => favs().includes(Number(n));
+
+      const shard = fnv1a(String(id)) % 128;
+      const r = await (await fetch(`${base}/data/animal/${shard}.json`)).json();
+      const a = r.find((x) => String(x.animalId) === String(id));
+      if (!a) { app.textContent = '找不到這隻動物（可能已被認養下架）'; throw new Error('not found'); }
+
+      const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.shelterAddress || a.shelterName)}`;
+      const fav = isFav(a.animalId);
+      app.innerHTML = `
+        <div class="card">
+          <img class="photo" src="${a.albumFile}" onerror="this.style.display='none'" />
+          <h1>${a.kind} · ${a.variety || '品種未知'} · ${a.colour}</h1>
+          <div><span class="tag">${a.sexDisplay}</span><span class="tag">${a.bodytypeDisplay}</span><span class="tag">${a.ageDisplay}</span><span class="tag">${a.sterilizationDisplay}</span></div>
+          <p>收容編號 ${a.subId} ｜ 開放 ${a.longTermOpen ? '長期開放' : a.openDate + '～' + a.closedDate} ｜ 更新 ${a.update}</p>
+          <p>尋獲地：${a.foundPlace || '未知'}｜備註：${a.remark || '無'}</p>
+          <button id="fav">${fav ? '★ 已收藏' : '☆ 收藏'}</button>
+          <button class="ghost" id="share">複製分享網址</button>
+        </div>
+        <div class="card">
+          <h2>收容所</h2>
+          <p>${a.shelterName}${a.county ? ' · ' + a.county : ''}</p>
+          <p>${a.shelterAddress} ｜ ${a.shelterTel}</p>
+          <p>${a.shelterOpenTime || ''}</p>
+          <p><a href="${mapUrl}" target="_blank" rel="noopener">地圖外連 →</a>
+          ${a.shelterId ? ` · <a href="../shelter/?id=${a.shelterId}">收容所頁 →</a>` : ''}</p>
+        </div>
+        <div class="card"><h2>同所其他動物</h2><div id="others"></div></div>`;
+      document.getElementById('fav').onclick = (e) => {
+        const list = favs();
+        const n = Number(a.animalId);
+        const i = list.indexOf(n);
+        if (i >= 0) list.splice(i, 1); else list.push(n);
+        localStorage.setItem('fav-animals', JSON.stringify(list));
+        e.target.textContent = list.includes(n) ? '★ 已收藏' : '☆ 收藏';
+      };
+      document.getElementById('share').onclick = async () => {
+        await navigator.clipboard.writeText(location.href);
+        alert('已複製分享網址');
+      };
+      const idx = await (await fetch(`${base}/data/search-index.json`)).json();
+      const others = idx.records.filter((x) => x.shelter === a.shelterName && String(x.id) !== String(a.animalId)).slice(0, 12);
+      document.getElementById('others').innerHTML = others.length
+        ? others.map((x) => `<a href="./?id=${x.id}">${x.variety || x.kind} · ${x.sex} · ${x.subId}</a>`).join('<br/>')
+        : '無';
+    </script>
+  </body>
+</html>

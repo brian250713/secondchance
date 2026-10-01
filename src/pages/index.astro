@@ -40,6 +40,7 @@
         <select id="f-ster"><option value="">絕育</option></select>
         <select id="f-county"><option value="">縣市</option></select>
         <select id="f-shelter"><option value="">收容所</option></select>
+        <label><input type="checkbox" id="f-fav" /> 只看收藏</label>
         <button class="share" id="share">複製分享網址</button>
       </div>
       <div class="count" id="count"></div>
@@ -86,6 +87,9 @@
       };
 
       function render() {
+        const favOnly = $('f-fav').checked;
+        let favSet = new Set();
+        try { favSet = new Set(JSON.parse(localStorage.getItem('fav-animals') || '[]').map(Number)); } catch {}
         const f = {
           keyword: $('q').value, kind: $('f-kind').value, sex: $('f-sex').value,
           bodytype: $('f-bodytype').value, age: $('f-age').value, sterilization: $('f-ster').value,
@@ -93,6 +97,7 @@
         };
         const toks = tokenize(f.keyword);
         const list = records.filter(r => {
+          if (favOnly && !favSet.has(Number(r.id))) return false;
           if (f.kind && r.kind !== f.kind) return false;
           if (f.sex && r.sex !== f.sex) return false;
           if (f.bodytype && r.bodytype !== f.bodytype) return false;
