@@ -1,5 +1,8 @@
 node_modules/
 dist/
-data/raw-*.json
+data/*.json
 public/data/
 .astro/
+.claude
+.agents
+skills-lock.json
